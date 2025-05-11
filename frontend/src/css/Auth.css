@@ -2,16 +2,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --primary-color: #000000;
-  --gradient-start: #2da0a8;
-  --gradient-end: #0e5c61;
+  --primary-color: #0d6efd; /* Changé pour une couleur bleue Bootstrap */
+  --gradient-start: #0d6efd;
+  --gradient-end: #1a3a8f;
   --white: #ffffff;
   --text-dark: #333333;
   --text-light: #666666;
   --input-bg: #f3f3f3;
   --border-radius-sm: 5px;
-  --border-radius-lg: 15px;
-  --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --border-radius-lg: 20px; /* Arrondi plus prononcé */
+  --shadow: 0 15px 30px rgba(0, 0, 0, 0.2); /* Ombre plus prononcée */
   --transition-speed: 0.6s;
 }
 
@@ -23,24 +23,26 @@
 }
 
 .auth-page {
-  background: white;
+  background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%); /* Ajout du dégradé */
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
+  padding: 2rem 0;
 }
 
 .auth-container {
-  background-color: var(--white);
+  background-color: rgba(255, 255, 255, 0.9); /* Fond plus transparent */
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow);
   position: relative;
   overflow: hidden;
-  width: 900px;
-  max-width: 100%;
-  min-height: 550px;
+  width: 90%;
+  max-width: 1000px;
+  min-height: 600px;
   max-height: 90vh;
+  z-index: 5;
 }
 
 .auth-container p {
@@ -80,6 +82,7 @@
   margin-top: 12px;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
+  position: relative; /* Pour l'effet pulse */
 }
 
 .auth-container button:hover {
@@ -396,6 +399,17 @@
   margin-top: 15px;
   border-radius: var(--border-radius-sm);
 }
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(26, 58, 143, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(26, 58, 143, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(26, 58, 143, 0);
+  }
+}
 
 /* RESPONSIVE DESIGN */
 @media (max-width: 768px) {
@@ -470,4 +484,15 @@ width: 100%;
 font-size: 14px;
 padding: 12px;
 border-radius: var(--border-radius-sm);
+}
+
+.auth-pattern-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
 }

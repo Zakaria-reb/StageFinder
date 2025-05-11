@@ -156,8 +156,80 @@ const authService = {
   // Vérifier si l'utilisateur est authentifié
   isAuthenticated: () => {
     return localStorage.getItem('auth_token') !== null;
+  },
+
+
+  
+  // Fonctions pour la gestion des posts (offres de stage)
+  posts: {
+    // Récupérer tous les posts
+    getAll: async (params = {}) => {
+      try {
+        const response = await api.get('/api/posts', { params });
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+        throw error;
+      }
+    },
+    
+    // Récupérer un post spécifique
+    get: async (id) => {
+      try {
+        const response = await api.get(`/api/posts/${id}`);
+        return response.data;
+      } catch (error) {
+        console.error(`Error fetching post ${id}:`, error);
+        throw error;
+      }
+    },
+    
+    // Créer un nouveau post
+    create: async (postData) => {
+      try {
+        const response = await api.post('/api/posts', postData);
+        return response.data;
+      } catch (error) {
+        console.error('Error creating post:', error);
+        throw error;
+      }
+    },
+    
+    // Mettre à jour un post existant
+    update: async (id, postData) => {
+      try {
+        const response = await api.put(`/api/posts/${id}`, postData);
+        return response.data;
+      } catch (error) {
+        console.error(`Error updating post ${id}:`, error);
+        throw error;
+      }
+    },
+    
+    // Supprimer un post
+    delete: async (id) => {
+      try {
+        const response = await api.delete(`/api/posts/${id}`);
+        return response.data;
+      } catch (error) {
+        console.error(`Error deleting post ${id}:`, error);
+        throw error;
+      }
+    },
+    
+    // Récupérer les posts d'un utilisateur
+    getUserPosts: async () => {
+      try {
+        const response = await api.get('/api/user/posts');
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching user posts:', error);
+        throw error;
+      }
+    }
   }
 };
+
 
 export { api, authService };
 export default axios;
