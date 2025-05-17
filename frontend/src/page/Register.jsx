@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../axiosConfig'; // Importation du service d'authentification
 import 'bootstrap/dist/css/bootstrap.min.css';
+import Navbar from '../layouts/Navbar';
 import '../css/Auth.css';
 import { 
   FaUserGraduate, 
@@ -73,7 +74,7 @@ const AuthPage = () => {
   // Rediriger si déjà authentifié
   useEffect(() => {
     if (authService.isAuthenticated()) {
-      navigate('/Dashboard');
+      navigate('/Offre');
     }
   }, [navigate]);
   
@@ -130,7 +131,7 @@ const AuthPage = () => {
       
       // Redirection après connexion réussie
       setTimeout(() => {
-        navigate('/Dashboard');
+        navigate('/Offre');
       }, 1500);
       
     } catch (err) {
@@ -199,6 +200,7 @@ const AuthPage = () => {
   
   return (
     <>
+    <Navbar />
       <div className="auth-page position-relative overflow-hidden">
         {/* Éléments flottants */}
         

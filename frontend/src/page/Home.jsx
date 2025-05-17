@@ -8,6 +8,7 @@ import {
   FaLaptopCode
 } from 'react-icons/fa';
 
+import Navbar from '../layouts/Navbar';
 const Home = () => {
   // Animation au défilement
   useEffect(() => {
@@ -30,6 +31,7 @@ const Home = () => {
 
   return (
     <>
+      <Navbar/>
       {/* Hero Section avec effet de parallaxe et éléments flottants */}
       <section className="hero-section py-5 bg-gradient-primary text-white position-relative overflow-hidden">
         {/* Éléments de design flottants */}

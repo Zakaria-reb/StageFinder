@@ -7,6 +7,9 @@ import '../axiosConfig'; // Pour appliquer la configuration globale d'axios
 import Dashboard from "../page/Dashboard";
 import Offre from "../page/Offre";
 import PostDetail from "../page/PostDetail";
+import NewPost from "../page/NewPost";
+import EditPost from "../page/EditPost";
+import ApplicationDetails from "../page/ApplicationDetails";
 
 export const router = createBrowserRouter([
     {
@@ -29,12 +32,24 @@ export const router = createBrowserRouter([
                 element: <PostDetail/>
             },
             {
+                path:'/applications/:id',
+                element: <ApplicationDetails/>
+            },
+            {
+                path:'/posts/edit/:id',
+                element: <EditPost/>
+            },
+            {
                 path:'/register',
                 element: <Register/>
             },
             {
                 path:'/users',
                 element: <Users/>
+            },
+            {
+                path:'/posts/new',
+                element: <NewPost/>
             },
             {
                 path:'*',

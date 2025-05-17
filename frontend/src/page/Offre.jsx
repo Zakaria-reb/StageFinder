@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import Navbar from '../layouts/UserNavbar';
 import { 
   FaMapMarkerAlt, 
   FaCalendarAlt, 
@@ -13,7 +14,8 @@ import {
   FaChevronRight,
   FaChevronLeft,
   FaStar,
-  FaRegStar
+  FaRegStar,
+  FaGlobe
 } from 'react-icons/fa';
 
 const Offre = () => {
@@ -78,7 +80,7 @@ const Offre = () => {
       setError(null);
     } catch (err) {
       console.error('Erreur lors de la récupération des offres de stage', err);
-      setError('Impossible de charger les offres de stage. Veuillez réessayer plus tard.');
+      setError('Unable to load opportunities. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -121,7 +123,7 @@ const Offre = () => {
   // Fonction pour formater la date
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('fr-FR', options);
+    return new Date(dateString).toLocaleDateString('en-US', options);
   };
   
   // Ajouter ou supprimer des favoris (fonction factice pour l'instant)
@@ -131,98 +133,118 @@ const Offre = () => {
   };
   
   return (
-    <div className="offres-page py-5">
-      <div className="container">
-        <div className="row mb-4">
-          <div className="col-lg-8">
-            <h1 className="fw-bold mb-2">Offres de stage</h1>
-            <p className="text-muted">
-              Trouvez le stage parfait parmi nos {pagination.total} offres disponibles
-            </p>
+    <div className="global-listings">
+      <Navbar />
+      
+      {/* Hero Banner */}
+      <div className="hero-banner">
+        <div className="container">
+          <div className="row align-items-center">
+            <div className="col-lg-7">
+              <h1 className="hero-title">Global Opportunities</h1>
+              <p className="hero-subtitle">Find your perfect internship among {pagination.total} worldwide opportunities</p>
+            </div>
+            <div className="col-lg-5">
+              <div className="search-container">
+                <div className="input-group">
+                  <span className="input-group-text border-0">
+                    <FaSearch />
+                  </span>
+                  <input 
+                    type="text" 
+                    className="form-control border-0" 
+                    placeholder="Search by keywords..."
+                    value={activeFilters.search}
+                    onChange={(e) => setActiveFilters({...activeFilters, search: e.target.value})}
+                  />
+                  <button 
+                    className="btn btn-primary rounded-end"
+                    onClick={applyFilters}
+                  >
+                    Search
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="col-lg-4 d-flex justify-content-lg-end align-items-center mt-3 mt-lg-0">
-            <button 
-              className="btn btn-outline-primary d-lg-none rounded-pill me-2"
-              onClick={() => setMobileFiltersVisible(!mobileFiltersVisible)}
-            >
-              <FaFilter className="me-2" /> 
-              {mobileFiltersVisible ? 'Masquer les filtres' : 'Afficher les filtres'}
-            </button>
-            <Link to="/posts/new" className="btn btn-primary rounded-pill">
-              <i className="fas fa-plus me-2"></i> Publier une offre
-            </Link>
+        </div>
+      </div>
+      
+      <div className="container main-content">
+        <div className="row">
+          <div className="col-lg-12 mb-4">
+            <div className="d-flex justify-content-between align-items-center flex-wrap">
+              <div className="listings-summary">
+                <span className="total-count">{pagination.total}</span> opportunities available
+              </div>
+              <div className="actions">
+                <button 
+                  className="btn btn-outline-primary d-lg-none me-2"
+                  onClick={() => setMobileFiltersVisible(!mobileFiltersVisible)}
+                >
+                  <FaFilter className="me-1" /> 
+                  {mobileFiltersVisible ? 'Hide Filters' : 'Filters'}
+                </button>
+                <Link to="/posts/new" className="btn btn-primary">
+                  Post New Opportunity
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
         
-        <div className="row">
+        <div className="row g-4">
           {/* Sidebar de filtres */}
           <div className={`col-lg-3 mb-4 ${mobileFiltersVisible ? 'd-block' : 'd-none d-lg-block'}`}>
-            <div className="card shadow-sm rounded-4 border-0 overflow-hidden">
-              <div className="card-header bg-gradient-light border-0 py-3">
-                <h5 className="mb-0 fw-bold">
-                  <FaFilter className="me-2 text-primary" /> Filtres
-                </h5>
+            <div className="filters-panel">
+              <div className="filters-header">
+                <h5><FaFilter className="me-2" /> Filters</h5>
               </div>
-              <div className="card-body">
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Recherche</label>
-                  <div className="input-group">
-                    <span className="input-group-text bg-light border-end-0">
-                      <FaSearch className="text-muted" />
-                    </span>
-                    <input 
-                      type="text" 
-                      className="form-control bg-light border-start-0" 
-                      placeholder="Mots-clés..."
-                      value={activeFilters.search}
-                      onChange={(e) => setActiveFilters({...activeFilters, search: e.target.value})}
-                    />
-                  </div>
-                </div>
-                
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Domaine</label>
+              
+              <div className="filters-body">
+                <div className="filter-group">
+                  <label>Field</label>
                   <select 
-                    className="form-select bg-light" 
+                    className="form-select" 
                     value={activeFilters.domain}
                     onChange={(e) => setActiveFilters({...activeFilters, domain: e.target.value})}
                   >
-                    <option value="">Tous les domaines</option>
+                    <option value="">All Fields</option>
                     {filters.domains.map((domain, index) => (
                       <option key={index} value={domain}>{domain}</option>
                     ))}
                   </select>
                 </div>
                 
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Ville</label>
+                <div className="filter-group">
+                  <label>Location</label>
                   <select 
-                    className="form-select bg-light"
+                    className="form-select"
                     value={activeFilters.ville}
                     onChange={(e) => setActiveFilters({...activeFilters, ville: e.target.value})}
                   >
-                    <option value="">Toutes les villes</option>
+                    <option value="">All Locations</option>
                     {filters.cities.map((city, index) => (
                       <option key={index} value={city}>{city}</option>
                     ))}
                   </select>
                 </div>
                 
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Type de stage</label>
+                <div className="filter-group">
+                  <label>Internship Type</label>
                   <select 
-                    className="form-select bg-light"
+                    className="form-select"
                     value={activeFilters.type_stage}
                     onChange={(e) => setActiveFilters({...activeFilters, type_stage: e.target.value})}
                   >
-                    <option value="">Tous les types</option>
+                    <option value="">All Types</option>
                     {filters.stageTypes.map((type, index) => (
                       <option key={index} value={type}>{type}</option>
                     ))}
                   </select>
                 </div>
                 
-                <div className="mb-3">
+                <div className="filter-group">
                   <div className="form-check form-switch">
                     <input 
                       className="form-check-input" 
@@ -231,13 +253,13 @@ const Offre = () => {
                       checked={activeFilters.teletravail === true}
                       onChange={(e) => setActiveFilters({...activeFilters, teletravail: e.target.checked ? true : null})}
                     />
-                    <label className="form-check-label fw-semibold" htmlFor="teletravailSwitch">
-                      <FaLaptopHouse className="me-1 text-primary" /> Télétravail possible
+                    <label className="form-check-label" htmlFor="teletravailSwitch">
+                      <FaLaptopHouse className="me-1" /> Remote Available
                     </label>
                   </div>
                 </div>
                 
-                <div className="mb-3">
+                <div className="filter-group">
                   <div className="form-check form-switch">
                     <input 
                       className="form-check-input" 
@@ -246,24 +268,24 @@ const Offre = () => {
                       checked={activeFilters.remunere === true}
                       onChange={(e) => setActiveFilters({...activeFilters, remunere: e.target.checked ? true : null})}
                     />
-                    <label className="form-check-label fw-semibold" htmlFor="remunerationSwitch">
-                      <FaEuroSign className="me-1 text-primary" /> Stage rémunéré
+                    <label className="form-check-label" htmlFor="remunerationSwitch">
+                      <FaEuroSign className="me-1" /> Paid Only
                     </label>
                   </div>
                 </div>
                 
-                <div className="d-grid gap-2 mt-4">
+                <div className="filter-actions">
                   <button 
-                    className="btn btn-primary rounded-pill" 
+                    className="btn btn-primary w-100 mb-2" 
                     onClick={applyFilters}
                   >
-                    Appliquer les filtres
+                    Apply Filters
                   </button>
                   <button 
-                    className="btn btn-outline-secondary rounded-pill" 
+                    className="btn btn-outline-secondary w-100" 
                     onClick={resetFilters}
                   >
-                    Réinitialiser
+                    Reset
                   </button>
                 </div>
               </div>
@@ -272,328 +294,789 @@ const Offre = () => {
           
           {/* Liste des offres */}
           <div className="col-lg-9">
-            {loading ? (
-              <div className="text-center py-5">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Chargement...</span>
+            <div className="listings-container">
+              {loading ? (
+                <div className="loader-container">
+                  <div className="loader-spinner"></div>
+                  <p>Loading opportunities...</p>
                 </div>
-                <p className="mt-3 text-muted">Chargement des offres de stage...</p>
-              </div>
-            ) : error ? (
-              <div className="alert alert-danger rounded-4" role="alert">
-                {error}
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="text-center py-5">
-                <div className="mb-4">
-                  <img 
-                    src="/images/empty-state.svg" 
-                    alt="Aucune offre trouvée" 
-                    className="img-fluid" 
-                    style={{maxHeight: "200px"}}
-                  />
+              ) : error ? (
+                <div className="error-container">
+                  <div className="alert-icon">⚠️</div>
+                  <h4>Error</h4>
+                  <p>{error}</p>
                 </div>
-                <h3 className="fw-bold">Aucune offre trouvée</h3>
-                <p className="text-muted mb-4">
-                  Aucune offre de stage ne correspond à vos critères. Essayez d'élargir votre recherche.
-                </p>
-                <button 
-                  className="btn btn-outline-primary rounded-pill px-4" 
-                  onClick={resetFilters}
-                >
-                  Réinitialiser les filtres
-                </button>
-              </div>
-            ) : (
-              <>
-                {posts.map(post => (
-                  <div key={post.id} className="card shadow-sm border-0 rounded-4 mb-4 position-relative hover-card">
-                    <div className="card-body p-4">
-                      <div className="row">
-                        <div className="col-md-9">
-                          <div className="d-flex align-items-center mb-3">
-                            <div className="company-logo me-3">
-                              <img 
-                                src={post.user.avatar || "/images/company-placeholder.jpg"} 
-                                alt={post.user.name} 
-                                className="rounded-3"
-                                width="50" 
-                                height="50"
-                              />
-                            </div>
-                            <div>
-                              <h5 className="card-title fw-bold mb-1">
-                                <Link to={`/PostDetail/${post.id}`} className="text-decoration-none text-dark stretched-link">
+              ) : posts.length === 0 ? (
+                <div className="empty-container">
+                  <div className="empty-icon">🔍</div>
+                  <h3>No Opportunities Found</h3>
+                  <p>No internship opportunities match your criteria. Try adjusting your filters.</p>
+                  <button 
+                    className="btn btn-outline-primary" 
+                    onClick={resetFilters}
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {posts.map(post => (
+                    <div key={post.id} className="opportunity-card">
+                      <div className="card-body">
+                        <div className="row g-0">
+                          <div className="col-lg-9">
+                            <div className="card-header-content">
+            
+                              <div className="title-container">
+                                <Link to={`/PostDetail/${post.id}`} className="opportunity-title">
                                   {post.title}
                                 </Link>
-                              </h5>
-                              <p className="text-primary mb-0">{post.user.name}</p>
+                                <div className="company-name">{post.user.name}</div>
+                              </div>
+                            </div>
+                            
+                            <div className="opportunity-description">
+                              {post.description.length > 150 
+                                ? post.description.substring(0, 150) + '...' 
+                                : post.description}
+                            </div>
+                            
+                            <div className="opportunity-meta">
+                              <div className="meta-item">
+                                <FaBriefcase /> {post.domain}
+                              </div>
+                              <div className="meta-item">
+                                <FaMapMarkerAlt /> {post.ville}
+                              </div>
+                              <div className="meta-item">
+                                <FaCalendarAlt /> {formatDate(post.date_debut)}
+                              </div>
+                              {post.teletravail && (
+                                <div className="meta-item">
+                                  <FaLaptopHouse /> Remote
+                                </div>
+                              )}
+                              {post.remunere && (
+                                <div className="meta-item">
+                                  <FaEuroSign /> {post.montant_remuneration ? `${post.montant_remuneration}€` : 'Paid'}
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="skills-container">
+                              {post.competences && post.competences.slice(0, 5).map((competence, index) => (
+                                <span key={index} className="skill-tag">
+                                  {competence}
+                                </span>
+                              ))}
+                              {post.competences && post.competences.length > 5 && (
+                                <span className="skill-tag tag-more">
+                                  +{post.competences.length - 5}
+                                </span>
+                              )}
                             </div>
                           </div>
                           
-                          <p className="card-text text-muted mb-3 line-clamp-2">
-                            {post.description.length > 150 
-                              ? post.description.substring(0, 150) + '...' 
-                              : post.description}
-                          </p>
-                          
-                          <div className="d-flex flex-wrap gap-2 mb-3">
-                            <span className="badge bg-light text-dark rounded-pill d-flex align-items-center">
-                              <FaBriefcase className="me-1 text-primary" /> {post.domain}
-                            </span>
-                            <span className="badge bg-light text-dark rounded-pill d-flex align-items-center">
-                              <FaMapMarkerAlt className="me-1 text-primary" /> {post.ville}
-                            </span>
-                            <span className="badge bg-light text-dark rounded-pill d-flex align-items-center">
-                              <FaCalendarAlt className="me-1 text-primary" /> {formatDate(post.date_debut)} - {formatDate(post.date_fin)}
-                            </span>
-                            {post.teletravail && (
-                              <span className="badge bg-light text-dark rounded-pill d-flex align-items-center">
-                                <FaLaptopHouse className="me-1 text-primary" /> Télétravail possible
-                              </span>
-                            )}
-                            {post.remunere && (
-                              <span className="badge bg-light text-dark rounded-pill d-flex align-items-center">
-                                <FaEuroSign className="me-1 text-primary" /> {post.montant_remuneration ? `${post.montant_remuneration}€` : 'Rémunéré'}
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className="d-flex flex-wrap gap-1">
-                            {post.competences && post.competences.slice(0, 5).map((competence, index) => (
-                              <span key={index} className="badge bg-primary-light text-primary rounded-pill">
-                                {competence}
-                              </span>
-                            ))}
-                            {post.competences && post.competences.length > 5 && (
-                              <span className="badge bg-primary-light text-primary rounded-pill">
-                                +{post.competences.length - 5}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="col-md-3 mt-3 mt-md-0 d-flex flex-column justify-content-between align-items-md-end">
-                          <div className="favorite-btn">
-                            <button 
-                              className="btn btn-sm btn-light rounded-circle p-2" 
-                              onClick={(e) => {
-                                e.preventDefault();
-                                toggleFavorite(post.id);
-                              }}
-                            >
-                              {false ? <FaStar className="text-warning" /> : <FaRegStar />}
-                            </button>
-                          </div>
-                          
-                          <div className="mt-auto">
-                            <span className="text-muted d-block text-md-end small">
-                              Publié le {new Date(post.created_at).toLocaleDateString('fr-FR')}
-                            </span>
+                          <div className="col-lg-3">
+                            <div className="card-actions">
+                              <button 
+                                className="favorite-btn" 
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  toggleFavorite(post.id);
+                                }}
+                              >
+                                {false ? <FaStar className="text-warning" /> : <FaRegStar />}
+                              </button>
+                              
+                              <div className="post-date">
+                                Posted on {new Date(post.created_at).toLocaleDateString('en-US')}
+                              </div>
+                              
+                              <Link to={`/PostDetail/${post.id}`} className="btn btn-outline-primary btn-sm view-details">
+                                View Details
+                              </Link>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-                
-                {/* Pagination */}
-                {pagination.lastPage > 1 && (
-                  <nav aria-label="Page navigation" className="my-4">
-                    <ul className="pagination justify-content-center">
-                      <li className={`page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`}>
-                        <button 
-                          className="page-link rounded-start-pill" 
-                          onClick={() => handlePageChange(pagination.currentPage - 1)}
-                          disabled={pagination.currentPage === 1}
-                        >
-                          <FaChevronLeft size={12} />
-                        </button>
-                      </li>
+                  ))}
+                  
+                  {/* Pagination */}
+                  {pagination.lastPage > 1 && (
+                    <div className="pagination-container">
+                      <button 
+                        className={`pagination-prev ${pagination.currentPage === 1 ? 'disabled' : ''}`}
+                        onClick={() => handlePageChange(pagination.currentPage - 1)}
+                        disabled={pagination.currentPage === 1}
+                      >
+                        <FaChevronLeft />
+                      </button>
                       
-                      {[...Array(pagination.lastPage).keys()].map(page => {
-                        // Afficher uniquement les pages proches de la page courante
-                        if (
-                          page + 1 === 1 || 
-                          page + 1 === pagination.lastPage || 
-                          (page + 1 >= pagination.currentPage - 1 && page + 1 <= pagination.currentPage + 1)
-                        ) {
-                          return (
-                            <li 
-                              key={page} 
-                              className={`page-item ${pagination.currentPage === page + 1 ? 'active' : ''}`}
-                            >
+                      <div className="pagination-pages">
+                        {[...Array(pagination.lastPage).keys()].map(page => {
+                          // Afficher uniquement les pages proches de la page courante
+                          if (
+                            page + 1 === 1 || 
+                            page + 1 === pagination.lastPage || 
+                            (page + 1 >= pagination.currentPage - 1 && page + 1 <= pagination.currentPage + 1)
+                          ) {
+                            return (
                               <button 
-                                className="page-link" 
+                                key={page} 
+                                className={`pagination-page ${pagination.currentPage === page + 1 ? 'active' : ''}`}
                                 onClick={() => handlePageChange(page + 1)}
                               >
                                 {page + 1}
                               </button>
-                            </li>
-                          );
-                        } else if (
-                          page + 1 === pagination.currentPage - 2 || 
-                          page + 1 === pagination.currentPage + 2
-                        ) {
-                          return (
-                            <li key={page} className="page-item disabled">
-                              <span className="page-link">...</span>
-                            </li>
-                          );
-                        }
-                        return null;
-                      })}
+                            );
+                          } else if (
+                            page + 1 === pagination.currentPage - 2 || 
+                            page + 1 === pagination.currentPage + 2
+                          ) {
+                            return (
+                              <span key={page} className="pagination-ellipsis">...</span>
+                            );
+                          }
+                          return null;
+                        })}
+                      </div>
                       
-                      <li className={`page-item ${pagination.currentPage === pagination.lastPage ? 'disabled' : ''}`}>
-                        <button 
-                          className="page-link rounded-end-pill" 
-                          onClick={() => handlePageChange(pagination.currentPage + 1)}
-                          disabled={pagination.currentPage === pagination.lastPage}
-                        >
-                          <FaChevronRight size={12} />
-                        </button>
-                      </li>
-                    </ul>
-                  </nav>
-                )}
-              </>
-            )}
+                      <button 
+                        className={`pagination-next ${pagination.currentPage === pagination.lastPage ? 'disabled' : ''}`}
+                        onClick={() => handlePageChange(pagination.currentPage + 1)}
+                        disabled={pagination.currentPage === pagination.lastPage}
+                      >
+                        <FaChevronRight />
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
       
       {/* CSS personnalisé */}
       <style jsx="true">{`
-        /* Styles généraux */
-.offres-page {
-  background-color:rgb(243, 246, 248);
+/* Base and Variables */
+:root {
+  --primary: #2563eb;
+  --primary-light: rgba(37, 99, 235, 0.1);
+  --secondary: #64748b;
+  --success: #10b981;
+  --info: #0ea5e9;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --dark: #1e293b;
+  --light: #f1f5f9;
+  --white: #ffffff;
+  --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --transition: all 0.3s ease;
+  --border-radius: 12px;
 }
 
-/* Style des cartes d'offres */
-.hover-card {
-  transition: all 0.3s ease;
+/* Global Styles */
+.global-listings {
+  font-family: 'Inter', sans-serif;
+  background-color: #f8fafc;
+  color: #334155;
+}
+
+/* Hero Banner */
+.hero-banner {
+  background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+  padding: 4rem 0;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='white' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+  z-index: 0;
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+.search-container {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border-radius: var(--border-radius);
+  padding: 0.5rem;
+}
+
+.search-container .input-group {
+  background: white;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.search-container .input-group-text {
+  background: white;
+  color: var(--secondary);
+  padding-left: 1rem;
+}
+
+.search-container .form-control {
+  height: 50px;
+}
+
+.search-container .btn {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Main Content */
+.main-content {
+  padding: 2rem 0;
+  position: relative;
+  margin-top: -1rem;
+  z-index: 1;
+}
+
+.listings-summary {
+  font-size: 1.1rem;
+  color: var(--secondary);
+}
+
+.total-count {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Filters Panel */
+.filters-panel {
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.filters-header {
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--light);
+}
+
+.filters-header h5 {
+  font-weight: 600;
+  margin: 0;
+  color: var(--dark);
+  display: flex;
+  align-items: center;
+}
+
+.filters-body {
+  padding: 1.25rem;
+}
+
+.filter-group {
+  margin-bottom: 1.25rem;
+}
+
+.filter-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.form-select, .form-control {
+  background-color: var(--light);
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+}
+
+.form-check-label {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.filter-actions {
+  margin-top: 1.5rem;
+}
+
+/* Opportunity Cards */
+.opportunity-card {
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  margin-bottom: 1.5rem;
+  transition: var(--transition);
   border-left: 4px solid transparent;
 }
 
-.hover-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08) !important;
-  border-left: 4px solid #0d6efd;
+.opportunity-card:hover {
+  transform: translateY(-5px);
+  border-left: 4px solid var(--primary);
 }
 
-/* Limitation des lignes de texte pour la description */
-.line-clamp-2 {
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-header-content {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.company-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--light);
+  margin-right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--light);
+}
+
+.company-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.title-container {
+  flex: 1;
+}
+
+.opportunity-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--dark);
+  text-decoration: none;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.opportunity-title:hover {
+  color: var(--primary);
+}
+
+.company-name {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.opportunity-description {
+  color: var(--secondary);
+  margin-bottom: 1rem;
+  line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* Style des badges */
-.badge {
-  font-weight: 500;
+.opportunity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--secondary);
+  background: var(--light);
   padding: 0.5rem 0.75rem;
+  border-radius: 50px;
 }
 
-.badge.bg-primary-light {
-  background-color: rgba(13, 110, 253, 0.1);
+.meta-item svg {
+  margin-right: 0.5rem;
+  color: var(--primary);
 }
 
-/* Style des filtres */
-.card-header.bg-gradient-light {
-  background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+.skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-/* Style pour la pagination */
-.pagination .page-link {
-  width: 36px;
-  height: 36px;
+.skill-tag {
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.tag-more {
+  background: var(--light);
+  color: var(--secondary);
+}
+
+.card-actions {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.post-date {
+  font-size: 0.85rem;
+  color: var(--secondary);
+  margin-bottom: 1rem;
+}
+
+.favorite-btn {
+  background: none;
+  border: none;
+  color: var(--secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  margin-bottom: 1rem;
+  transition: var(--transition);
+}
+
+.favorite-btn:hover {
+  color: var(--warning);
+  transform: scale(1.1);
+}
+
+.view-details {
+  width: 100%;
+  margin-top: auto;
+}
+
+/* Loader */
+.loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 0;
+}
+
+.loader-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid var(--light);
+  border-radius: 50%;
+  border-top-color: var(--primary);
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Empty State */
+.empty-container, .error-container {
+  text-align: center;
+  padding: 4rem 0;
+}
+
+.empty-icon, .alert-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+/* Pagination */
+.pagination-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #495057;
-  border-color: #dee2e6;
-  margin: 0 2px;
+  margin-top: 2rem;
 }
 
-.pagination .page-item.active .page-link {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
-}
-
-.pagination .page-link:hover {
-  background-color: #e9ecef;
-  color: #0d6efd;
-  z-index: 1;
-}
-
-/* Style pour le bouton de favoris */
-.favorite-btn .btn {
-  width: 38px;
-  height: 38px;
+.pagination-prev, .pagination-next {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  color: var(--dark);
+  background: white;
+  border: 1px solid var(--light);
+  cursor: pointer;
+  transition: var(--transition);
 }
 
-.favorite-btn .btn:hover {
-  background-color: #f8f9fa;
-  color: #ffc107;
+.pagination-prev:hover, .pagination-next:hover {
+  background: var(--light);
 }
 
-/* Améliorations pour la responsivité */
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  margin: 0 1rem;
+}
+
+.pagination-page {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0.25rem;
+  background: white;
+  border: 1px solid var(--light);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.pagination-page:hover {
+  background: var(--light);
+}
+
+.pagination-page.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.pagination-ellipsis {
+  margin: 0 0.25rem;
+  color: var(--secondary);
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 991.98px) {
+  .hero-banner {
+    padding: 3rem 0;
+  }
+  
+  .hero-title {
+    font-size: 2rem;
+  }
+  
+  .search-container {
+    margin-top: 1.5rem;
+  }
+  
+  .card-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .company-logo {
+    margin-bottom: 1rem;
+  }
+  
+  .opportunity-meta {
+    flex-wrap: wrap;
+  }
+  
+  .meta-item {
+    margin-bottom: 0.5rem;
+  }
+  
+  .card-actions {
+    margin-top: 1.5rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .favorite-btn, .post-date {
+    margin-bottom: 0;
+  }
+  
+  .view-details {
+    width: auto;
+  }
+}
+
 @media (max-width: 767.98px) {
+  .hero-title {
+    font-size: 1.75rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+  
+  .opportunity-title {
+    font-size: 1.1rem;
+  }
+  
   .card-body {
-    padding: 1.25rem !important;
+    padding: 1.25rem;
   }
   
-  .company-logo img {
-    width: 40px;
-    height: 40px;
+  .opportunity-meta {
+    gap: 0.5rem;
   }
   
-  .badge {
+  .meta-item {
+    font-size: 0.8rem;
     padding: 0.4rem 0.6rem;
-    font-size: 0.75rem;
+  }
+  
+  .pagination-container {
+    flex-wrap: wrap;
   }
 }
 
-/* Effet de focus sur les éléments de filtrage */
-.form-select:focus, .form-control:focus {
-  border-color: #86b7fe;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-/* Animation pour le chargement */
+/* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.card {
-  animation: fadeIn 0.5s ease-in-out;
+.opportunity-card {
+  animation: fadeIn 0.3s ease forwards;
+  animation-delay: calc(0.1s * var(--index, 0));
+  opacity: 0;
 }
 
-/* Style pour les logos d'entreprise */
-.company-logo img {
-  object-fit: cover;
-  border: 1px solid #e9ecef;
-}
-
-/* Style pour les boutons d'action */
+/* Button Styles */
 .btn-primary {
-  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.2);
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  padding: 0.5rem 1.25rem;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: var(--transition);
+}
+
+.btn-primary:hover {
+  background-color: #1e40af;
+  border-color: #1e40af;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.btn-outline-primary {
+  background-color: transparent;
+  border-color: var(--primary);
+  color: var(--primary);
+  padding: 0.5rem 1.25rem;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: var(--transition);
 }
 
 .btn-outline-primary:hover {
-  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.2);
+  background-color: var(--primary);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
-/* Style pour l'état vide */
-.img-fluid {
-  filter: opacity(0.8);
+.btn-outline-secondary {
+  background-color: transparent;
+  border-color: var(--secondary);
+  color: var(--secondary);
+  padding: 0.5rem 1.25rem;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: var(--transition);
 }
+
+.btn-outline-secondary:hover {
+  background-color: var(--secondary);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Focus States */
+.form-control:focus,
+.form-select:focus,
+.btn:focus {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+  border-color: var(--primary);
+  outline: none;
+}
+
+/* Custom Form Switch */
+.form-check-input {
+  width: 3em;
+  height: 1.5em;
+  margin-top: 0.25em;
+  vertical-align: top;
+  background-color: var(--light);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  border: none;
+  appearance: none;
+  transition: var(--transition);
+}
+
+.form-check-input:checked {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Additional Utility Classes */
+.text-primary {
+  color: var(--primary) !important;
+}
+
+.text-secondary {
+  color: var(--secondary) !important;
+}
+
+.text-warning {
+  color: var(--warning) !important;
+}
+
+.bg-primary-light {
+  background-color: var(--primary-light) !important;
+}
+
+/* Print Styles */
+@media print {
+  .global-listings {
+    background-color: white;
+  }
+  
+  .hero-banner,
+  .filters-panel,
+  .pagination-container,
+  .btn {
+    display: none !important;
+  }
+  
+  .opportunity-card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+}
+  
         `}
         </style>
         </div>

@@ -1,84 +1,52 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Application;
-use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Validator; // Added missing import
 
 class ApplicationController extends Controller
 {
     /**
-     * Enregistrer une nouvelle candidature à un stage
+     * Récupérer les détails d'une candidature spécifique
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param int $id ID de la candidature
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function show($id)
     {
-        $validator = Validator::make($request->all(), [
-            'post_id' => 'required|exists:posts,id',
-            'message' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Erreur de validation',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // Vérifier si l'utilisateur a déjà postulé à cette offre
-        $existingApplication = Application::where('user_id', Auth::id())
-            ->where('post_id', $request->post_id)
-            ->first();
-
-        if ($existingApplication) {
-            return response()->json([
-                'message' => 'Vous avez déjà postulé à cette offre de stage'
-            ], 422);
-        }
-        
-        // Vérifier si l'utilisateur est le propriétaire de l'offre
-        $post = Post::findOrFail($request->post_id);
-        if ($post->user_id === Auth::id()) {
-            return response()->json([
-                'message' => 'Vous ne pouvez pas postuler à votre propre offre de stage'
-            ], 422);
-        }
-
-        $application = Application::create([
-            'post_id' => $request->post_id,
-            'user_id' => Auth::id(),
-            'status' => 'pending',
-            'message' => $request->message ?? null,
-        ]);
-
-        return response()->json([
-            'message' => 'Candidature envoyée avec succès',
-            'application' => $application
-        ], 201);
-    }
-
-    /**
-     * Vérifier si l'utilisateur a déjà postulé à une offre
-     * 
-     * @param int $postId ID de l'offre de stage
-     * @return \Illuminate\Http\Response
-     */
-    public function checkApplicationStatus($postId)
-    {
-        $hasApplied = Application::where('user_id', Auth::id())
-            ->where('post_id', $postId)
-            ->exists();
+        try {
+            $application = Application::with([
+                'post', 
+                'user' => function($query) {
+                    $query->select('id', 'name', 'email', 'telephone', 'ville', 'ecole', 
+                                  'niveau_etudes', 'specialite', 'cv_path', 'avatar');
+                }
+            ])->findOrFail($id);
             
-        return response()->json([
-            'hasApplied' => $hasApplied
-        ]);
+            // Vérifier si l'utilisateur est autorisé à voir cette candidature
+            if (Auth::id() !== $application->user_id && Auth::id() !== $application->post->user_id) {
+                return response()->json([
+                    'message' => 'Action non autorisée'
+                ], 403);
+            }
+            
+            // Charger les informations supplémentaires selon le type d'utilisateur
+            if (Auth::id() === $application->post->user_id) {
+                // Si c'est le recruteur, charger plus d'informations sur le candidat
+                $application->user->load(['competences', 'experiences', 'formations']);
+            }
+            
+            return response()->json($application);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la récupération des détails de la candidature',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-
+   
     /**
      * Lister les candidatures d'un étudiant
      *
@@ -86,14 +54,20 @@ class ApplicationController extends Controller
      */
     public function myApplications()
     {
-        $applications = Application::with('post.user')
-            ->where('user_id', Auth::id())
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-            
-        return response()->json([
-            'applications' => $applications
-        ]);
+        try {
+            // Chargement complet des relations nécessaires
+            $applications = Application::with(['post.user', 'user'])
+                ->where('user_id', Auth::id())
+                ->orderBy('created_at', 'desc')
+                ->get();
+                
+            return response()->json($applications);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la récupération des candidatures',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -103,16 +77,22 @@ class ApplicationController extends Controller
      */
     public function receivedApplications()
     {
-        $applications = Application::with(['post', 'user'])
-            ->whereHas('post', function($query) {
-                $query->where('user_id', Auth::id());
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-            
-        return response()->json([
-            'applications' => $applications
-        ]);
+        try {
+            // Chargement complet des relations nécessaires
+            $applications = Application::with(['post', 'user'])
+                ->whereHas('post', function($query) {
+                    $query->where('user_id', Auth::id());
+                })
+                ->orderBy('created_at', 'desc')
+                ->get();
+                
+            return response()->json($applications);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la récupération des candidatures reçues',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -124,32 +104,127 @@ class ApplicationController extends Controller
      */
     public function updateStatus(Request $request, $id)
     {
-        $validator = Validator::make($request->all(), [
-            'status' => 'required|in:pending,accepted,rejected',
-        ]);
-
-        if ($validator->fails()) {
+        try {
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:pending,accepted,rejected',
+            ]);
+            
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Erreur de validation',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            
+            $application = Application::with('post')->findOrFail($id);
+            
+            // Vérifier si l'utilisateur est le propriétaire de l'offre
+            if ($application->post->user_id !== Auth::id()) {
+                return response()->json([
+                    'message' => 'Action non autorisée'
+                ], 403);
+            }
+            
+            $application->status = $request->status;
+            $application->save();
+            
+            // Recharger l'application avec toutes les relations pour le retour
+            $application->load(['post', 'user']);
+            
             return response()->json([
-                'message' => 'Erreur de validation',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $application = Application::with('post')->findOrFail($id);
-        
-        // Vérifier si l'utilisateur est le propriétaire de l'offre
-        if ($application->post->user_id !== Auth::id()) {
+                'message' => 'Statut de la candidature mis à jour avec succès',
+                'application' => $application
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Action non autorisée'
-            ], 403);
+                'message' => 'Erreur lors de la mise à jour du statut',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        $application->status = $request->status;
-        $application->save();
-
-        return response()->json([
-            'message' => 'Statut de la candidature mis à jour avec succès',
-            'application' => $application
-        ]);
+    }
+    
+    /**
+     * Créer une nouvelle candidature
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'post_id' => 'required|exists:posts,id',
+                'message' => 'nullable|string|max:5000',
+            ]);
+            
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Erreur de validation',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            
+            // Vérifier si l'utilisateur a déjà postulé
+            $existingApplication = Application::where('user_id', Auth::id())
+                ->where('post_id', $request->post_id)
+                ->first();
+                
+            if ($existingApplication) {
+                return response()->json([
+                    'message' => 'Vous avez déjà postulé à cette offre'
+                ], 409); // Conflict
+            }
+            
+            $application = Application::create([
+                'user_id' => Auth::id(),
+                'post_id' => $request->post_id,
+                'message' => $request->message,
+                'status' => 'pending'
+            ]);
+            
+            // Charger les relations pour le retour
+            $application->load(['post', 'user']);
+            
+            return response()->json([
+                'message' => 'Candidature soumise avec succès',
+                'application' => $application
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la création de la candidature',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Vérifier si un étudiant a déjà postulé à une offre
+     *
+     * @param int $postId
+     * @return \Illuminate\Http\Response
+     */
+    public function checkApplicationStatus($postId)
+    {
+        try {
+            $application = Application::where('user_id', Auth::id())
+                ->where('post_id', $postId)
+                ->first();
+                
+            if ($application) {
+                return response()->json([
+                    'hasApplied' => true,
+                    'status' => $application->status
+                ]);
+            }
+            
+            return response()->json([
+                'hasApplied' => false
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la vérification du statut',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\ApplicationController;
 
 // Public routes
 Route::post('/register', [RegisteredUserController::class, 'store']);
@@ -19,20 +20,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-    
+   
     // Logout route
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
-    
+   
     // Post routes
     Route::post('/posts', [PostController::class, 'store']);
     Route::put('/posts/{id}', [PostController::class, 'update']);
     Route::delete('/posts/{id}', [PostController::class, 'destroy']);
     Route::get('/my-posts', [PostController::class, 'myPosts']);
-}
-);
-
+   
+    // Application routes (candidatures)
     Route::post('/applications', [ApplicationController::class, 'store']);
     Route::get('/applications/check/{postId}', [ApplicationController::class, 'checkApplicationStatus']);
     Route::get('/my-applications', [ApplicationController::class, 'myApplications']);
     Route::get('/received-applications', [ApplicationController::class, 'receivedApplications']);
     Route::put('/applications/{id}/status', [ApplicationController::class, 'updateStatus']);
+    
+    // Nouvelle route pour les détails d'une candidature
+    Route::get('/applications/{id}', [ApplicationController::class, 'show']);
+});

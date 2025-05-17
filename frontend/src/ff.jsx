@@ -1,13 +1,13 @@
+// auth-axios.js - Correction de l'intercepteur de réponse
 import axios from 'axios';
 
-// Configuration de base
+// Configuration de base (inchangée)
 axios.defaults.baseURL = 'http://localhost:8000';
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-axios.defaults.withCredentials = true; // Important pour les cookies CSRF et l'authentification
+axios.defaults.withCredentials = true; 
 
-// Intercepteur pour gérer automatiquement les tokens
+// Intercepteur pour gérer automatiquement les tokens (inchangé)
 axios.interceptors.request.use(config => {
-  // Récupérer le token depuis localStorage si disponible
   const token = localStorage.getItem('auth_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -17,18 +17,22 @@ axios.interceptors.request.use(config => {
   return Promise.reject(error);
 });
 
-// Intercepteur pour gérer les erreurs d'authentification
+// Intercepteur pour gérer les erreurs d'authentification - MODIFIÉ
 axios.interceptors.response.use(
   response => response,
   async error => {
-    // Gérer les erreurs 401 (non authentifié) ou 419 (session expirée)
+    // Ne rediriger automatiquement que pour les pages qui ne sont pas les détails de poste
     if (error.response && (error.response.status === 401 || error.response.status === 419)) {
       // Supprimer le token si l'authentification a échoué
       localStorage.removeItem('auth_token');
       
-      // Rediriger vers la page de connexion si nécessaire
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        window.location.href = '/login';
+      // Ne pas rediriger automatiquement vers /register pour la page de détails de poste
+      // C'est important pour que les utilisateurs non authentifiés puissent voir les détails
+      const currentPath = window.location.pathname;
+      const isPostDetailPage = currentPath.startsWith('/posts/') && !currentPath.includes('/edit/');
+      
+      if (!isPostDetailPage && window.location.pathname !== '/register') {
+        window.location.href = '/register';
       }
     }
     return Promise.reject(error);
@@ -39,7 +43,8 @@ axios.interceptors.response.use(
 const api = {
   get: async (url, config = {}) => {
     try {
-      // Pour les requêtes GET, pas besoin de cookie CSRF
+      // Obtenir le cookie CSRF d'abord
+      await axios.get('/sanctum/csrf-cookie');
       return axios.get(url, config);
     } catch (error) {
       console.error('GET request error:', error);
@@ -49,7 +54,7 @@ const api = {
   
   post: async (url, data = {}, config = {}) => {
     try {
-      // Obtenir le cookie CSRF d'abord pour les requêtes qui modifient l'état
+      // Obtenir le cookie CSRF d'abord
       await axios.get('/sanctum/csrf-cookie');
       return axios.post(url, data, config);
     } catch (error) {
@@ -94,7 +99,6 @@ const authService = {
   // Inscription d'un nouvel utilisateur
   register: async (userData) => {
     try {
-      // Assurez-vous que le type de contenu est correctement défini pour les formulaires avec fichiers
       const config = {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -103,7 +107,7 @@ const authService = {
       
       const response = await api.post('/api/register', userData, config);
       
-      // Si un token est retourné, le stocker
+      // Stockage du token si présent dans la réponse
       if (response.data && response.data.token) {
         localStorage.setItem('auth_token', response.data.token);
       }
@@ -121,10 +125,8 @@ const authService = {
       const response = await api.post('/api/login', credentials);
       
       // Si un token est retourné, le stocker
-      if (response.data && response.data.token) {
+      if (response.data.token) {
         localStorage.setItem('auth_token', response.data.token);
-      } else {
-        console.error('No token received from login response:', response.data);
       }
       
       return response.data;
@@ -148,103 +150,27 @@ const authService = {
     }
   },
   
-  // Récupérer l'utilisateur actuel
+  // Récupérer l'utilisateur actuel - MODIFIÉ avec meilleure gestion d'erreurs
   getUser: async () => {
     try {
-      // Vérifier d'abord si un token existe
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        console.warn('No auth token found when trying to get user');
-        return null;
-      }
-      
       const response = await api.get('/api/user');
       return response.data;
     } catch (error) {
       console.error('Error fetching user:', error);
-      if (error.response && (error.response.status === 401 || error.response.status === 419)) {
-        // Invalider le token si non autorisé
-        localStorage.removeItem('auth_token');
+      // Si nous obtenons une erreur 401, c'est normal - l'utilisateur n'est pas authentifié
+      if (error.response && error.response.status === 401) {
+        return null;
       }
       throw error;
     }
   },
   
-  // Vérifier si l'utilisateur est authentifié
+  // Vérifier si l'utilisateur est authentifié - MODIFIÉ avec vérification plus robuste
   isAuthenticated: () => {
     return localStorage.getItem('auth_token') !== null;
   },
 
-  // Fonctions pour la gestion des posts (offres de stage)
-  posts: {
-    // Récupérer tous les posts
-    getAll: async (params = {}) => {
-      try {
-        const response = await api.get('/api/posts', { params });
-        return response.data;
-      } catch (error) {
-        console.error('Error fetching posts:', error);
-        throw error;
-      }
-    },
-    
-    // Récupérer un post spécifique
-    get: async (id) => {
-      try {
-        const response = await api.get(`/api/posts/${id}`);
-        return response.data;
-      } catch (error) {
-        console.error(`Error fetching post ${id}:`, error);
-        throw error;
-      }
-    },
-    
-    // Créer un nouveau post
-    create: async (postData) => {
-      try {
-        const response = await api.post('/api/posts', postData);
-        return response.data;
-      } catch (error) {
-        console.error('Error creating post:', error);
-        throw error;
-      }
-    },
-    
-    // Mettre à jour un post existant
-    update: async (id, postData) => {
-      try {
-        const response = await api.put(`/api/posts/${id}`, postData);
-        return response.data;
-      } catch (error) {
-        console.error(`Error updating post ${id}:`, error);
-        throw error;
-      }
-    },
-    
-    // Supprimer un post
-    delete: async (id) => {
-      try {
-        const response = await api.delete(`/api/posts/${id}`);
-        return response.data;
-      } catch (error) {
-        console.error(`Error deleting post ${id}:`, error);
-        throw error;
-      }
-    },
-    
-    // Récupérer les posts d'un utilisateur
-    getUserPosts: async () => {
-      try {
-        const response = await api.get('/api/my-posts');
-        return response.data;
-      } catch (error) {
-        console.error('Error fetching user posts:', error);
-        throw error;
-      }
-    }
-  },
-
-  // Fonctions pour la gestion des candidatures (applications)
+  // Applications (candidatures) - MODIFIÉ avec meilleure gestion d'erreurs
   applications: {
     // Postuler à une offre de stage
     apply: async (postId, message = null) => {
@@ -261,18 +187,23 @@ const authService = {
       }
     },
     
-    // Vérifier si l'utilisateur a déjà postulé à une offre
+    // Vérifier si l'utilisateur a déjà postulé à une offre - MODIFIÉ pour gérer les erreurs
     checkStatus: async (postId) => {
       try {
+        if (!localStorage.getItem('auth_token')) {
+          return { hasApplied: false };
+        }
+        
         const response = await api.get(`/api/applications/check/${postId}`);
         return response.data;
       } catch (error) {
         console.error('Error checking application status:', error);
-        throw error;
+        // En cas d'erreur, supposons que l'utilisateur n'a pas postulé
+        return { hasApplied: false };
       }
     },
     
-    // Récupérer les candidatures de l'utilisateur
+    // Autres méthodes inchangées...
     getMyApplications: async () => {
       try {
         const response = await api.get('/api/my-applications');
@@ -283,7 +214,6 @@ const authService = {
       }
     },
     
-    // Récupérer les candidatures reçues (pour les recruteurs)
     getReceivedApplications: async () => {
       try {
         const response = await api.get('/api/received-applications');
@@ -294,7 +224,6 @@ const authService = {
       }
     },
     
-    // Mettre à jour le statut d'une candidature (pour les recruteurs)
     updateStatus: async (applicationId, status) => {
       try {
         const response = await api.put(`/api/applications/${applicationId}/status`, { status });
@@ -304,7 +233,36 @@ const authService = {
         throw error;
       }
     }
+  },
+
+  // AJOUT: Fonction debug pour aider à diagnostiquer les problèmes d'authentification
+authService.debug = {
+  getToken: () => {
+    return localStorage.getItem('auth_token');
+  },
+  checkAuth: async () => {
+    try {
+      // Test simple d'authentification
+      const response = await api.get('/api/user', { 
+        validateStatus: function (status) {
+          return status < 500; // Accepte tous les codes sauf erreur serveur
+        }
+      });
+      
+      return {
+        authenticated: response.status === 200,
+        status: response.status,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Auth debug error:', error);
+      return {
+        authenticated: false,
+        error: error.message
+      };
+    }
   }
+}
 };
 
 export { api, authService };

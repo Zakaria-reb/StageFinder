@@ -1,134 +1,141 @@
-// src/page/PostDetail.jsx
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  FaMapMarkerAlt, 
-  FaCalendarAlt, 
-  FaBriefcase, 
-  FaEuroSign, 
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import {
+  FaMapMarkerAlt,
+  FaCalendarAlt,
+  FaBriefcase,
+  FaEuroSign,
   FaLaptopHouse,
-  FaArrowLeft,
   FaUser,
   FaEnvelope,
-  FaPaperPlane
+  FaChevronLeft,
+  FaClock,
+  FaCheck,
+  FaTimes,
+  FaGlobe,
+  FaPencilAlt,
+  FaTrashAlt,
+  FaExclamationTriangle
 } from 'react-icons/fa';
-import { api, authService } from '../axiosConfig'; // Importer la configuration axios
+import axios from 'axios';
+import Navbar from '../layouts/UserNavbar';
 
 const PostDetail = () => {
+  // Récupérer l'ID du post depuis l'URL
   const { id } = useParams();
   const navigate = useNavigate();
+  
+  // États
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [user, setUser] = useState(null);
-  const [applicationSubmitted, setApplicationSubmitted] = useState(false);
-  const [applicationLoading, setApplicationLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
+  const [applicationMessage, setApplicationMessage] = useState('');
+  const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isPostOwner, setIsPostOwner] = useState(false);
+  const [isEtudiant, setIsEtudiant] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  
+  // Charger les détails du post et les informations de l'utilisateur
   useEffect(() => {
-    // Vérifier si l'utilisateur est authentifié
-    const checkAuth = async () => {
-      const isAuth = authService.isAuthenticated();
-      setIsAuthenticated(isAuth);
-      
-      if (isAuth) {
-        try {
-          // Récupérer les informations de l'utilisateur
-          const userData = await authService.getUser();
-          setUser(userData);
-        } catch (err) {
-          console.error('Erreur lors de la récupération des données utilisateur:', err);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Récupérer les détails du post
+        const postResponse = await axios.get(`/api/posts/${id}`);
+        setPost(postResponse.data.post);
+        
+        // Récupérer les informations de l'utilisateur connecté
+        const userResponse = await axios.get('/api/user');
+        setCurrentUser(userResponse.data);
+
+        // Vérifier si l'utilisateur est le propriétaire du post
+        if (userResponse.data && postResponse.data.post) {
+          setIsPostOwner(userResponse.data.id === postResponse.data.post.user_id);
+          setIsEtudiant(userResponse.data.type === 'etudiant');
         }
+        
+        setError(null);
+      } catch (err) {
+        console.error('Erreur lors de la récupération des données', err);
+        setError('Failed to load opportunity details. Please try again later.');
+      } finally {
+        setLoading(false);
       }
     };
 
-    checkAuth();
+    fetchData();
+  }, [id]);
+
+  // Gérer la soumission de candidature
+  const handleSubmitApplication = async (e) => {
+    e.preventDefault();
     
-    if (id) {
-      fetchPost();
-      if (isAuthenticated) {
-        checkApplicationStatus();
-      }
-    }
-  }, [id, isAuthenticated]);
-
-  const fetchPost = async () => {
-    setLoading(true);
-    try {
-      const response = await api.get(`/api/posts/${id}`);
-      setPost(response.data.post);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching post:', err);
-      setError('Impossible de récupérer cette offre de stage. Elle n\'existe peut-être plus.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const checkApplicationStatus = async () => {
-    if (!isAuthenticated) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(null);
     
     try {
-      const response = await api.get(`/api/applications/check/${id}`);
-      setApplicationSubmitted(response.data.hasApplied);
-    } catch (err) {
-      console.error('Error checking application status:', err);
-      // Silently fail - we'll assume they haven't applied
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette offre de stage ?')) {
-      return;
-    }
-
-    try {
-      await api.delete(`/api/posts/${id}`);
-      navigate('/my-posts');
-    } catch (err) {
-      console.error('Error deleting post:', err);
-      alert('Erreur lors de la suppression de l\'offre de stage.');
-    }
-  };
-
-  const handleApply = async () => {
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: `/posts/${id}` } });
-      return;
-    }
-
-    setApplicationLoading(true);
-    try {
-      await api.post(`/api/applications`, {
-        post_id: id
+      await axios.post('/api/applications', {
+        post_id: id,
+        message: applicationMessage
       });
-      setApplicationSubmitted(true);
-      alert('Votre candidature a été envoyée avec succès !');
+      
+      setShowApplicationForm(false);
+      setSubmitSuccess('Your application has been submitted successfully!');
+      setApplicationMessage('');
     } catch (err) {
       console.error('Error submitting application:', err);
-      alert('Erreur lors de l\'envoi de votre candidature. Veuillez réessayer.');
+      setSubmitError(err.response?.data?.message || 'Failed to submit application. Please try again.');
     } finally {
-      setApplicationLoading(false);
+      setSubmitting(false);
     }
   };
 
-  // Format date to French locale
+  // Gérer la suppression d'un post
+  const handleDeletePost = async () => {
+    setDeleting(true);
+    try {
+      await axios.delete(`/api/posts/${id}`);
+      navigate('/Offre', { state: { message: 'Post deleted successfully' } });
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      setError('Failed to delete the post. Please try again.');
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Fonction pour formater la date
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('fr-FR', options);
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+
+  // Calculer la durée du stage en semaines
+  const calculateDuration = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const durationMs = end - start;
+    const durationDays = durationMs / (1000 * 60 * 60 * 24);
+    const durationWeeks = Math.ceil(durationDays / 7);
+    return durationWeeks;
   };
 
   if (loading) {
     return (
-      <div className="post-detail py-5">
-        <div className="container">
-          <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Chargement...</span>
-            </div>
-            <p className="mt-3 text-muted">Chargement de l'offre de stage...</p>
+      <div>
+        <Navbar />
+        <div className="container mt-5 text-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
           </div>
+          <p className="mt-3">Loading opportunity details...</p>
         </div>
       </div>
     );
@@ -136,234 +143,367 @@ const PostDetail = () => {
 
   if (error) {
     return (
-      <div className="post-detail py-5">
-        <div className="container">
-          <div className="alert alert-danger rounded-4" role="alert">
-            <h4 className="alert-heading">Erreur</h4>
+      <div>
+        <Navbar />
+        <div className="container mt-5">
+          <div className="alert alert-danger" role="alert">
+            <h4 className="alert-heading">Error!</h4>
             <p>{error}</p>
             <hr />
-            <Link to="/posts" className="btn btn-outline-primary rounded-pill">
-              <FaArrowLeft className="me-2" /> Retour à la liste des offres
-            </Link>
+            <div className="d-flex justify-content-center">
+              <Link to="/Offre" className="btn btn-outline-primary">
+                <FaChevronLeft className="me-2" /> Back to opportunities
+              </Link>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  if (!post) return null;
-
-  const isOwner = user && post.user_id === user.id;
-  const isStudent = user && user.type === 'etudiant';
-  const canApply = isAuthenticated && isStudent && !isOwner && !applicationSubmitted;
-
-  return (
-    <div className="post-detail py-5">
-      <div className="container">
-        <div className="mb-4">
-          <Link to="/posts" className="text-decoration-none text-primary">
-            <FaArrowLeft className="me-2" /> Retour aux offres de stage
+  if (!post) {
+    return (
+      <div>
+        <Navbar />
+        <div className="container mt-5 text-center">
+          <h3>Opportunity not found</h3>
+          <p>The opportunity you're looking for doesn't exist or has been removed.</p>
+          <Link to="/Offre" className="btn btn-primary mt-3">
+            <FaChevronLeft className="me-2" /> Back to opportunities
           </Link>
         </div>
+      </div>
+    );
+  }
 
-        <div className="card shadow-sm border-0 rounded-4 overflow-hidden">
-          <div className="card-header bg-light border-0 py-4">
-            <div className="d-flex justify-content-between align-items-start flex-wrap">
-              <h1 className="h2 fw-bold mb-2">{post.title}</h1>
-              <div className="d-flex gap-2 mt-2 mt-md-0">
-                {isOwner && (
-                  <>
-                    <Link
-                      to={`/posts/edit/${post.id}`}
-                      className="btn btn-primary rounded-pill"
-                    >
-                      Modifier
-                    </Link>
-                    <button
-                      onClick={handleDelete}
-                      className="btn btn-outline-danger rounded-pill"
-                    >
-                      Supprimer
-                    </button>
-                  </>
-                )}
-                {canApply && (
-                  <button
-                    onClick={handleApply}
-                    disabled={applicationLoading}
-                    className="btn btn-success rounded-pill"
+  return (
+    <div className="post-detail-page">
+      <Navbar />
+      
+      <div className="container mt-4 mb-5">
+        <div className="row mb-4">
+          <div className="col-6">
+            <Link to="/Offre" className="btn btn-outline-secondary">
+              <FaChevronLeft className="me-2" /> Back to opportunities
+            </Link>
+          </div>
+          
+          {/* Afficher les boutons de modification/suppression pour le propriétaire du post */}
+          {isPostOwner && (
+            <div className="col-6 text-end">
+              <Link to={`/posts/edit/${id}`} className="btn btn-outline-primary me-2">
+                <FaPencilAlt className="me-2" /> Edit
+              </Link>
+              
+              <button 
+                className="btn btn-outline-danger" 
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <FaTrashAlt className="me-2" /> Delete
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {/* Modale de confirmation de suppression */}
+        {showDeleteConfirm && (
+          <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="modal-dialog">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Confirm Deletion</h5>
+                  <button 
+                    type="button" 
+                    className="btn-close" 
+                    onClick={() => setShowDeleteConfirm(false)}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <div className="d-flex align-items-center mb-3">
+                    <div className="me-3 text-warning">
+                      <FaExclamationTriangle size={24} />
+                    </div>
+                    <div>
+                      <p className="mb-0">Are you sure you want to delete this opportunity?</p>
+                      <p className="text-danger mb-0"><strong>This action cannot be undone.</strong></p>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleting}
                   >
-                    {applicationLoading ? (
+                    Cancel
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-danger" 
+                    onClick={handleDeletePost}
+                    disabled={deleting}
+                  >
+                    {deleting ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Envoi...
+                        <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        Deleting...
                       </>
                     ) : (
-                      <>
-                        <FaPaperPlane className="me-2" /> Postuler
-                      </>
+                      <>Delete</>
                     )}
                   </button>
-                )}
-                {!isAuthenticated && (
-                  <Link
-                    to={`/login`}
-                    state={{ from: `/posts/${id}` }}
-                    className="btn btn-outline-primary rounded-pill"
-                  >
-                    <FaUser className="me-2" /> Se connecter pour postuler
-                  </Link>
-                )}
-                {applicationSubmitted && (
-                  <span className="badge bg-success py-2 px-3 rounded-pill d-flex align-items-center">
-                    <FaPaperPlane className="me-2" /> Candidature envoyée
-                  </span>
-                )}
+                </div>
               </div>
-            </div>
-            <div className="mt-3 d-flex flex-wrap gap-2">
-              <span className="badge bg-light text-dark rounded-pill d-flex align-items-center">
-                <FaBriefcase className="me-1 text-primary" /> {post.domain}
-              </span>
-              <span className="badge bg-light text-dark rounded-pill d-flex align-items-center">
-                <FaMapMarkerAlt className="me-1 text-primary" /> {post.ville}
-              </span>
-              <span className="badge bg-light text-dark rounded-pill d-flex align-items-center">
-                <FaCalendarAlt className="me-1 text-primary" /> {post.type_stage}
-              </span>
-              {post.teletravail && (
-                <span className="badge bg-light text-dark rounded-pill d-flex align-items-center">
-                  <FaLaptopHouse className="me-1 text-primary" /> Télétravail possible
-                </span>
-              )}
-              {post.remunere && (
-                <span className="badge bg-light text-dark rounded-pill d-flex align-items-center">
-                  <FaEuroSign className="me-1 text-primary" /> 
-                  {post.montant_remuneration ? `${post.montant_remuneration} €` : 'Rémunéré'}
-                </span>
-              )}
             </div>
           </div>
-
-          <div className="card-body p-4">
-            <div className="mb-4">
-              <h2 className="h5 fw-bold">Informations sur le stage</h2>
-              <div className="row mt-3">
-                <div className="col-md-6 mb-3">
-                  <div className="d-flex align-items-center">
-                    <div className="icon-circle bg-primary-light me-3">
-                      <FaCalendarAlt className="text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-muted mb-0">Période</p>
-                      <p className="fw-semibold mb-0">
-                        Du {formatDate(post.date_debut)} au {formatDate(post.date_fin)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-md-6 mb-3">
-                  <div className="d-flex align-items-center">
-                    <div className="icon-circle bg-primary-light me-3">
-                      <FaUser className="text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-muted mb-0">Entreprise</p>
-                      <p className="fw-semibold mb-0">{post.user?.name || 'Non spécifié'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <h2 className="h5 fw-bold">Description</h2>
-              <div className="mt-3 description-text">
-                {post.description.split('\n').map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <h2 className="h5 fw-bold">Compétences requises</h2>
-              <div className="d-flex flex-wrap gap-2 mt-3">
-                {post.competences && post.competences.map((skill, index) => (
-                  <span key={index} className="badge bg-primary-light text-primary rounded-pill">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 p-4 bg-light rounded-4">
-              <h2 className="h5 fw-bold">Contact</h2>
-              <div className="mt-3">
-                <div className="d-flex align-items-center mb-2">
-                  <div className="icon-circle bg-primary-light me-3">
-                    <FaUser className="text-primary" />
+        )}
+        
+        {submitSuccess && (
+          <div className="alert alert-success alert-dismissible fade show" role="alert">
+            <FaCheck className="me-2" /> {submitSuccess}
+            <button type="button" className="btn-close" onClick={() => setSubmitSuccess(null)}></button>
+          </div>
+        )}
+        
+        <div className="card shadow-sm mb-4">
+          <div className="card-body">
+            <div className="row">
+              <div className="col-md-8">
+                <h1 className="post-title mb-2">{post.title}</h1>
+                
+                <div className="company-info d-flex align-items-center mb-3">
+                  <div className="company-logo me-3">
+                    <img 
+                      src={post.user?.avatar || "/images/company-placeholder.jpg"} 
+                      alt={post.user?.name} 
+                      className="rounded-circle"
+                      width="50"
+                      height="50"
+                    />
                   </div>
                   <div>
-                    <p className="mb-0"><strong>Entreprise :</strong> {post.user?.name || 'Non spécifié'}</p>
+                    <div className="company-name fw-bold">{post.user?.name}</div>
+                    <div className="text-muted small">
+                      Posted on {new Date(post.created_at).toLocaleDateString('en-US')}
+                    </div>
                   </div>
                 </div>
-                <div className="d-flex align-items-center">
-                  <div className="icon-circle bg-primary-light me-3">
-                    <FaEnvelope className="text-primary" />
-                  </div>
-                  <div>
-                    <p className="mb-0"><strong>Email :</strong> {post.user?.email || 'Non spécifié'}</p>
+                
+                <div className="post-meta mb-4">
+                  <div className="row">
+                    <div className="col-md-6 mb-2">
+                      <div className="d-flex align-items-center">
+                        <div className="icon-container me-2">
+                          <FaBriefcase className="text-primary" />
+                        </div>
+                        <div>
+                          <div className="small text-muted">Field</div>
+                          <div className="fw-medium">{post.domain}</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="col-md-6 mb-2">
+                      <div className="d-flex align-items-center">
+                        <div className="icon-container me-2">
+                          <FaMapMarkerAlt className="text-primary" />
+                        </div>
+                        <div>
+                          <div className="small text-muted">Location</div>
+                          <div className="fw-medium">{post.ville} {post.teletravail && "(Remote available)"}</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="col-md-6 mb-2">
+                      <div className="d-flex align-items-center">
+                        <div className="icon-container me-2">
+                          <FaCalendarAlt className="text-primary" />
+                        </div>
+                        <div>
+                          <div className="small text-muted">Duration</div>
+                          <div className="fw-medium">
+                            {calculateDuration(post.date_debut, post.date_fin)} weeks
+                            <span className="ms-1 text-muted small">
+                              ({formatDate(post.date_debut)} - {formatDate(post.date_fin)})
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="col-md-6 mb-2">
+                      <div className="d-flex align-items-center">
+                        <div className="icon-container me-2">
+                          <FaEuroSign className="text-primary" />
+                        </div>
+                        <div>
+                          <div className="small text-muted">Compensation</div>
+                          <div className="fw-medium">
+                            {post.remunere ? 
+                              (post.montant_remuneration ? `${post.montant_remuneration}€` : 'Paid') : 
+                              'Unpaid'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              </div>
+              
+              <div className="col-md-4">
+                <div className="action-panel p-3 bg-light rounded">
+                  {/* N'afficher le panneau de candidature que pour les utilisateurs de type "etudiant" et qui ne sont pas propriétaires du post */}
+                  {isEtudiant && !isPostOwner ? (
+                    <div>
+                      {showApplicationForm ? (
+                        <form onSubmit={handleSubmitApplication}>
+                          <h5 className="mb-3">Apply for this opportunity</h5>
+                          <div className="form-group mb-3">
+                            <label htmlFor="applicationMessage" className="form-label">
+                              Message (optional)
+                            </label>
+                            <textarea
+                              id="applicationMessage"
+                              className="form-control"
+                              rows="4"
+                              placeholder="Introduce yourself and explain why you're interested in this opportunity..."
+                              value={applicationMessage}
+                              onChange={(e) => setApplicationMessage(e.target.value)}
+                            ></textarea>
+                          </div>
+                          
+                          {submitError && (
+                            <div className="alert alert-danger">
+                              <FaTimes className="me-2" /> {submitError}
+                            </div>
+                          )}
+                          
+                          <div className="d-grid gap-2">
+                            <button 
+                              type="submit" 
+                              className="btn btn-primary" 
+                              disabled={submitting}
+                            >
+                              {submitting ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  Submitting...
+                                </>
+                              ) : (
+                                'Submit Application'
+                              )}
+                            </button>
+                            <button 
+                              type="button" 
+                              className="btn btn-outline-secondary"
+                              onClick={() => setShowApplicationForm(false)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <div className="text-center">
+                          <p className="mb-3">Interested in this opportunity?</p>
+                          <button 
+                            className="btn btn-primary w-100" 
+                            onClick={() => setShowApplicationForm(true)}
+                          >
+                            Apply Now
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : isPostOwner ? (
+                    <div className="text-center">
+                      <h5 className="mb-3">Manage Your Post</h5>
+                      <Link to={`/applications/received/${id}`} className="btn btn-primary w-100 mb-2">
+                        View Applications
+                      </Link>
+                      <div className="mt-3 text-muted">
+                        <small>You are the owner of this opportunity posting</small>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="mb-2">Only students can apply to this opportunity</p>
+                      <div className="mt-2 text-muted">
+                        <small>You must be registered as a student to apply</small>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="card shadow-sm mb-4">
+          <div className="card-header bg-white">
+            <h5 className="mb-0">Description</h5>
+          </div>
+          <div className="card-body">
+            <div className="description-content">
+              {post.description.split('\n').map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div className="card shadow-sm mb-4">
+          <div className="card-header bg-white">
+            <h5 className="mb-0">Required Skills</h5>
+          </div>
+          <div className="card-body">
+            <div className="skills-container">
+              {post.competences && post.competences.map((competence, index) => (
+                <span key={index} className="skill-tag">
+                  {competence}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div className="card shadow-sm">
+          <div className="card-header bg-white">
+            <h5 className="mb-0">About {post.user?.name}</h5>
+          </div>
+          <div className="card-body">
+            <div className="row">
+              <div className="col-md-2 mb-3 mb-md-0">
+                <img 
+                  src={post.user?.avatar || "/images/company-placeholder.jpg"} 
+                  alt={post.user?.name} 
+                  className="img-fluid rounded"
+                />
+              </div>
+              <div className="col-md-10">
+                <h5>{post.user?.name}</h5>
+                {post.user?.bio ? (
+                  <p>{post.user?.bio}</p>
+                ) : (
+                  <p>No additional information available about this employer.</p>
+                )}
+                {post.user?.website && (
+                  <div className="mb-2">
+                    <FaGlobe className="me-2 text-secondary" />
+                    <a href={post.user.website} target="_blank" rel="noopener noreferrer">
+                      {post.user.website}
+                    </a>
+                  </div>
+                )}
+                <Link to={`/company/${post.user?.id}`} className="btn btn-outline-primary btn-sm mt-2">
+                  View all opportunities from this employer
+                </Link>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* CSS personnalisé */}
-      <style jsx="true">{`
-        /* Styles généraux */
-        .post-detail {
-          background-color: rgb(243, 246, 248);
-        }
-
-        /* Style des badges */
-        .badge {
-          font-weight: 500;
-          padding: 0.5rem 0.75rem;
-        }
-
-        .badge.bg-primary-light {
-          background-color: rgba(13, 110, 253, 0.1);
-        }
-
-        /* Style pour les icônes circulaires */
-        .icon-circle {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .bg-primary-light {
-          background-color: rgba(13, 110, 253, 0.1);
-        }
-
-        /* Style pour la description */
-        .description-text {
-          line-height: 1.6;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 767.98px) {
-          .card-body {
-            padding: 1.25rem !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };
