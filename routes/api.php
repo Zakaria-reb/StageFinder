@@ -39,4 +39,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     // Nouvelle route pour les détails d'une candidature
     Route::get('/applications/{id}', [ApplicationController::class, 'show']);
+    
+    // Nouvelle route pour la suppression d'une candidature
+    Route::delete('/applications/{id}', [ApplicationController::class, 'destroy']);
 });

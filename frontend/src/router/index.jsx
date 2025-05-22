@@ -10,50 +10,59 @@ import PostDetail from "../page/PostDetail";
 import NewPost from "../page/NewPost";
 import EditPost from "../page/EditPost";
 import ApplicationDetails from "../page/ApplicationDetails";
+import ApplicationRecue from "../page/Application"; // Importation du composant ApplicationRecue
 
 export const router = createBrowserRouter([
     {
-        element: <Layout/>,
+        element: <Layout />,
         children: [
             {
                 path:'/',
-                element: <Home/>
+                element: <Home />
             },
             {
                 path:'/Dashboard',
-                element: <Dashboard/>
+                element: <Dashboard />
             },
             {
                 path:'/Offre',
-                element: <Offre/>
+                element: <Offre />
             },
             {
                 path:'/PostDetail/:id',
-                element: <PostDetail/>
+                element: <PostDetail />
             },
             {
                 path:'/applications/:id',
-                element: <ApplicationDetails/>
+                element: <ApplicationDetails />
+            },
+            {
+                path:'/application-details/:id',
+                element: <ApplicationDetails />
             },
             {
                 path:'/posts/edit/:id',
-                element: <EditPost/>
+                element: <EditPost />
             },
             {
                 path:'/register',
-                element: <Register/>
+                element: <Register />
             },
             {
                 path:'/users',
-                element: <Users/>
+                element: <Users />
             },
             {
                 path:'/posts/new',
-                element: <NewPost/>
+                element: <NewPost />
+            },
+            {
+                path:'/applications-recues',
+                element: <ApplicationRecue />
             },
             {
                 path:'*',
-                element: <h1> Not Found </h1>
+                element: <div>Not Found</div>
             }
         ]
     }

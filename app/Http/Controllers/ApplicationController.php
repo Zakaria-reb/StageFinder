@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator; // Added missing import
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class ApplicationController extends Controller
 {
@@ -13,40 +14,79 @@ class ApplicationController extends Controller
      *
      * @param int $id ID de la candidature
      * @return \Illuminate\Http\Response
-     */
+        */
     public function show($id)
     {
         try {
-            $application = Application::with([
-                'post', 
-                'user' => function($query) {
-                    $query->select('id', 'name', 'email', 'telephone', 'ville', 'ecole', 
-                                  'niveau_etudes', 'specialite', 'cv_path', 'avatar');
-                }
-            ])->findOrFail($id);
+            // Chargement de base sans relations
+            $application = Application::find($id);
             
-            // Vérifier si l'utilisateur est autorisé à voir cette candidature
+            if (!$application) {
+                return response()->json(['message' => 'Application not found'], 404);
+            }
+
+            // Chargement progressif des relations
+            if (!$application->post) {
+                return response()->json(['message' => 'Associated post not found'], 404);
+            }
+
+            if (!$application->post->user) {
+                return response()->json(['message' => 'Post author not found'], 404);
+            }
+
+            if (!$application->user) {
+                return response()->json(['message' => 'Applicant user not found'], 404);
+            }
+
+            // Autorisations
             if (Auth::id() !== $application->user_id && Auth::id() !== $application->post->user_id) {
-                return response()->json([
-                    'message' => 'Action non autorisée'
-                ], 403);
+                return response()->json(['message' => 'Unauthorized'], 403);
             }
-            
-            // Charger les informations supplémentaires selon le type d'utilisateur
+
+            // Si c'est l'entreprise qui consulte la candidature d'un étudiant
             if (Auth::id() === $application->post->user_id) {
-                // Si c'est le recruteur, charger plus d'informations sur le candidat
-                $application->user->load(['competences', 'experiences', 'formations']);
+                // Sélectionner uniquement les champs spécifiés pour l'étudiant
+                $studentData = $application->user->only([
+                    'id',
+                    'name',
+                    'ecole',
+                    'niveau_etudes',
+                    'specialite',
+                    'cv_path',
+                    'email',
+                    'ville'
+                ]);
+                
+                // Créer la réponse avec les données filtrées
+                $response = [
+                    'id' => $application->id,
+                    'post_id' => $application->post_id,
+                    'user_id' => $application->user_id,
+                    'status' => $application->status,
+                    'message' => $application->message,
+                    'created_at' => $application->created_at,
+                    'updated_at' => $application->updated_at,
+                    'post' => $application->post,
+                    'user' => $studentData
+                ];
+                
+                return response()->json($response);
             }
-            
-            return response()->json($application);
+
+            // Si c'est l'étudiant qui consulte sa propre candidature
+            return response()->json($application->load(['post.user']));
+
         } catch (\Exception $e) {
+            Log::error('Application details error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
-                'message' => 'Erreur lors de la récupération des détails de la candidature',
-                'error' => $e->getMessage()
+                'message' => 'Error details: ' . $e->getMessage() // Retour temporaire
             ], 500);
         }
     }
-   
+    
     /**
      * Lister les candidatures d'un étudiant
      *
@@ -55,7 +95,6 @@ class ApplicationController extends Controller
     public function myApplications()
     {
         try {
-            // Chargement complet des relations nécessaires
             $applications = Application::with(['post.user', 'user'])
                 ->where('user_id', Auth::id())
                 ->orderBy('created_at', 'desc')
@@ -63,9 +102,13 @@ class ApplicationController extends Controller
                 
             return response()->json($applications);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erreur lors de la récupération des candidatures',
+            Log::error('Erreur lors de la récupération des candidatures', [
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'message' => 'Erreur lors de la récupération des candidatures'
             ], 500);
         }
     }
@@ -78,8 +121,10 @@ class ApplicationController extends Controller
     public function receivedApplications()
     {
         try {
-            // Chargement complet des relations nécessaires
-            $applications = Application::with(['post', 'user'])
+            $applications = Application::with(['post', 'user' => function($query) {
+                // Sélectionner uniquement les champs nécessaires pour l'entreprise
+                $query->select('id', 'name', 'ecole', 'niveau_etudes', 'specialite', 'cv_path', 'email', 'ville');
+            }])
                 ->whereHas('post', function($query) {
                     $query->where('user_id', Auth::id());
                 })
@@ -88,9 +133,13 @@ class ApplicationController extends Controller
                 
             return response()->json($applications);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erreur lors de la récupération des candidatures reçues',
+            Log::error('Erreur lors de la récupération des candidatures reçues', [
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'message' => 'Erreur lors de la récupération des candidatures reçues'
             ], 500);
         }
     }
@@ -116,7 +165,19 @@ class ApplicationController extends Controller
                 ], 422);
             }
             
-            $application = Application::with('post')->findOrFail($id);
+            $application = Application::with('post')->find($id);
+            
+            if (!$application) {
+                return response()->json([
+                    'message' => 'Candidature introuvable'
+                ], 404);
+            }
+            
+            if (!$application->post) {
+                return response()->json([
+                    'message' => 'L\'offre associée à cette candidature est introuvable'
+                ], 404);
+            }
             
             // Vérifier si l'utilisateur est le propriétaire de l'offre
             if ($application->post->user_id !== Auth::id()) {
@@ -128,17 +189,24 @@ class ApplicationController extends Controller
             $application->status = $request->status;
             $application->save();
             
-            // Recharger l'application avec toutes les relations pour le retour
-            $application->load(['post', 'user']);
+            // Recharger l'application avec les relations filtrées pour le retour
+            $application->load(['post', 'user' => function($query) {
+                $query->select('id', 'name', 'ecole', 'niveau_etudes', 'specialite', 'cv_path', 'email', 'ville');
+            }]);
             
             return response()->json([
                 'message' => 'Statut de la candidature mis à jour avec succès',
                 'application' => $application
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erreur lors de la mise à jour du statut',
+            Log::error('Erreur lors de la mise à jour du statut', [
+                'application_id' => $id,
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'message' => 'Erreur lors de la mise à jour du statut'
             ], 500);
         }
     }
@@ -172,7 +240,7 @@ class ApplicationController extends Controller
             if ($existingApplication) {
                 return response()->json([
                     'message' => 'Vous avez déjà postulé à cette offre'
-                ], 409); // Conflict
+                ], 409);
             }
             
             $application = Application::create([
@@ -190,9 +258,14 @@ class ApplicationController extends Controller
                 'application' => $application
             ], 201);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erreur lors de la création de la candidature',
+            Log::error('Erreur lors de la création de la candidature', [
+                'user_id' => Auth::id(),
+                'post_id' => $request->post_id,
                 'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'message' => 'Erreur lors de la création de la candidature'
             ], 500);
         }
     }
@@ -221,9 +294,62 @@ class ApplicationController extends Controller
                 'hasApplied' => false
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erreur lors de la vérification du statut',
+            Log::error('Erreur lors de la vérification du statut', [
+                'user_id' => Auth::id(),
+                'post_id' => $postId,
                 'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'message' => 'Erreur lors de la vérification du statut'
+            ], 500);
+        }
+    }
+
+    /**
+     * Supprimer une candidature (pour les recruteurs)
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        try {
+            $application = Application::with('post')->find($id);
+            
+            if (!$application) {
+                return response()->json([
+                    'message' => 'Candidature introuvable'
+                ], 404);
+            }
+            
+            if (!$application->post) {
+                return response()->json([
+                    'message' => 'L\'offre associée à cette candidature est introuvable'
+                ], 404);
+            }
+            
+            // Vérifier si l'utilisateur est le propriétaire de l'offre
+            if ($application->post->user_id !== Auth::id()) {
+                return response()->json([
+                    'message' => 'Action non autorisée'
+                ], 403);
+            }
+            
+            $application->delete();
+            
+            return response()->json([
+                'message' => 'Candidature supprimée avec succès'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la suppression de la candidature', [
+                'application_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'message' => 'Erreur lors de la suppression de la candidature'
             ], 500);
         }
     }
