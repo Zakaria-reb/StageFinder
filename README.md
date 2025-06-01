@@ -107,7 +107,7 @@ Avant de commencer, assurez-vous d’avoir installé :
 
 ## 👨‍💻 Auteur
 
-Ce projet a été réalisé dans le cadre d’un exercice de développement web fullstack.
+Ce projet a été réalisé dans le cadre d’un exercice de développement web fullstack par ZAKARIA REBBAH & SOUHAIB SELLAB.
 
 ---
 
