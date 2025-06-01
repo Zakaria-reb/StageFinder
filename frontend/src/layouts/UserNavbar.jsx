@@ -135,7 +135,7 @@ const UserNavbar = () => {
             </li>
             {user && user.type === 'entreprise' ? (
               <li className="nav-item">
-                <Link className={`nav-link ${location.pathname === '/candidats' ? 'active' : ''}`} to="/candidats">
+                <Link className={`nav-link ${location.pathname === '/applications-recues' ? 'active' : ''}`} to="/applications-recues">
                   <FaUsers className="me-1" /> Candidats
                 </Link>
               </li>
